@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Requests\StoreMovieRequest;
+
 class MovieController extends Controller
 {
 
@@ -28,8 +29,14 @@ class MovieController extends Controller
     public function detail($id)
     {
         $movie = Movie::find($id);
+
+        if (!$movie) {
+            return redirect('/')->with('error', 'Movie tidak ditemukan.');
+        }
+
         return view('detail', compact('movie'));
     }
+
 
     public function create()
     {
@@ -37,21 +44,21 @@ class MovieController extends Controller
         return view('input', compact('categories'));
     }
 
-   public function store(StoreMovieRequest $request)
-{
-    // Ambil data yang sudah tervalidasi
-    $validated = $request->validated();
+    public function store(StoreMovieRequest $request)
+    {
+        // Ambil data yang sudah tervalidasi
+        $validated = $request->validated();
 
-    // Simpan file foto jika ada
-    if ($request->hasFile('foto_sampul')) {
-        $validated['foto_sampul'] = $request->file('foto_sampul')->store('movie_covers', 'public');
+        // Simpan file foto jika ada
+        if ($request->hasFile('foto_sampul')) {
+            $validated['foto_sampul'] = $request->file('foto_sampul')->store('movie_covers', 'public');
+        }
+
+        // Simpan data ke database
+        Movie::create($validated);
+
+        return redirect('/')->with('success', 'Data berhasil ditambahkan.');
     }
-
-    // Simpan data ke database
-    Movie::create($validated);
-
-    return redirect('/')->with('success', 'Data berhasil ditambahkan.');
-}
 
 
     public function data()
@@ -126,16 +133,12 @@ class MovieController extends Controller
         return redirect('/movies/data')->with('success', 'Data berhasil diperbarui');
     }
 
-    public function delete($id)
+    public function delete(Movie $movie)
     {
-        $movie = Movie::findOrFail($id);
-
-        // Delete the movie's photo if it exists
         if (File::exists(public_path('images/' . $movie->foto_sampul))) {
             File::delete(public_path('images/' . $movie->foto_sampul));
         }
 
-        // Delete the movie record from the database
         $movie->delete();
 
         return redirect('/movies/data')->with('success', 'Data berhasil dihapus');
